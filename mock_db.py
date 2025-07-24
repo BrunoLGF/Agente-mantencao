@@ -1,75 +1,85 @@
-# mock_db.py
+import datetime
 
-from datetime import datetime
+# Simula usuários e papéis
+users = {
+    "Diretor": "11000000001",
+    "Gerente de Produção": "11000000002",
+    "Líder de Manutenção": "11000000003",
+    "Líder Produção 1": "11000000004",
+    "Líder Produção 2": "11000000005",
+    "Mecânico 1": "11000000010",
+    "Mecânico 2": "11000000011",
+    "Eletricista 1": "11000000020",
+    "Eletricista 2": "11000000021",
+}
 
-# Lista de usuários simulados
-USERS = [
-    {"id": "11000000001", "nome": "Diretor"},
-    {"id": "11000000002", "nome": "Gerente Produção"},
-    {"id": "11000000003", "nome": "Líder Manutenção"},
-    {"id": "11000000004", "nome": "Líder Produção 1"},
-    {"id": "11000000005", "nome": "Líder Produção 2"},
-    {"id": "11000000010", "nome": "Mecânico 1"},
-    {"id": "11000000011", "nome": "Mecânico 2"},
-    {"id": "11000000020", "nome": "Eletricista 1"},
-    {"id": "11000000021", "nome": "Eletricista 2"},
-]
+roles = {
+    "11000000001": "Diretor",
+    "11000000002": "Gerente de Produção",
+    "11000000003": "Líder de Manutenção",
+    "11000000004": "Líder de Produção",
+    "11000000005": "Líder de Produção",
+    "11000000010": "Mecânico",
+    "11000000011": "Mecânico",
+    "11000000020": "Eletricista",
+    "11000000021": "Eletricista",
+}
 
-# Mensagens por usuário
-MESSAGES = {user["id"]: [] for user in USERS}
-UNREAD_COUNT = {user["id"]: 0 for user in USERS}
+# Simula histórico de mensagens e ordens de serviço
+message_log = []
+order_counter = 1
+open_orders = []
 
-# Histórico de OSs
-ORDERS = []
-ORDER_ID_COUNTER = 1
+def get_users():
+    return users
 
+def get_user_role(number):
+    return roles.get(number, "Desconhecido")
 
-def get_conversation(user_id):
-    return MESSAGES.get(user_id, [])
+def save_message(user_number, message, sender):
+    message_log.append({
+        "from": user_number if sender == "user" else "agent",
+        "message": message,
+        "timestamp": datetime.datetime.now().isoformat()
+    })
 
+def get_messages_for_user(user_number):
+    return [
+        msg for msg in message_log
+        if msg["from"] == user_number or msg["from"] == "agent"
+    ]
 
-def add_message(user_id, text, sender="agent"):
-    MESSAGES[user_id].append({"text": text, "from": sender, "time": datetime.now()})
-    if sender == "agent":
-        UNREAD_COUNT[user_id] += 1
-
-
-def get_unread_count(user_id):
-    return UNREAD_COUNT.get(user_id, 0)
-
-
-def mark_as_read(user_id):
-    UNREAD_COUNT[user_id] = 0
-
-
-def register_order(equipamento, solicitante, tipo_falha):
-    global ORDER_ID_COUNTER
-    order = {
-        "id": f"OS-{ORDER_ID_COUNTER:03}",
-        "equipamento": equipamento,
-        "falha": tipo_falha,
-        "status": "Aberta",
-        "solicitante": solicitante,
-        "data_abertura": datetime.now(),
+def create_order(user_number, description):
+    global order_counter
+    new_order = {
+        "id": order_counter,
+        "aberta_por": user_number,
+        "equipamento": description,
+        "status": "aberta",
         "responsável": None,
-        "data_finalizacao": None
+        "timestamp": datetime.datetime.now().isoformat()
     }
-    ORDERS.append(order)
-    ORDER_ID_COUNTER += 1
-    return order
+    open_orders.append(new_order)
+    order_counter += 1
+    return new_order["id"]
 
+def assign_technician(tech_number):
+    for order in open_orders:
+        if order["responsável"] is None:
+            order["responsável"] = tech_number
+            order["status"] = "em atendimento"
+            break
 
-def finalizar_ordem(ordem_id, responsável):
-    for ordem in ORDERS:
-        if ordem["id"] == ordem_id:
-            ordem["status"] = "Finalizada"
-            ordem["responsável"] = responsável
-            ordem["data_finalizacao"] = datetime.now()
-            return ordem
-    return None
+def close_order(tech_number):
+    for order in open_orders:
+        if order["responsável"] == tech_number and order["status"] == "em atendimento":
+            order["status"] = "finalizado"
+            break
 
-
-def listar_ordens_por_status(status=None):
-    if status:
-        return [o for o in ORDERS if o["status"] == status]
-    return ORDERS
+def get_open_orders(user_number=None):
+    if user_number:
+        return [
+            o for o in open_orders
+            if o["aberta_por"] == user_number and o["status"] != "finalizado"
+        ]
+    return [o for o in open_orders if o["status"] != "finalizado"]
