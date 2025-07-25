@@ -12,7 +12,8 @@ def render_interface():
         st.subheader("Usuários")
         for user in get_users():
             count = unread_counts().get(user, 0)
-            label = f"{user['nome']} ({count})" if count > 0 else user["nome"]
+            nome = get_users().get(user, {}).get("nome", user)
+label = f"{nome} ({count})" if count > 0 else nome
             if st.button(label, key=user["numero"]):
                 switch_user(user["numero"])
 
