@@ -1,36 +1,37 @@
-import json
-from typing import Dict
+import streamlit as st
 
-DATA_PATH = "data/state.json"
+# Lista de usuários fictícios (simulando os números)
+USERS = {
+    "11 00000-0001": "Diretor",
+    "11 00000-0002": "Gerente de Produção",
+    "11 00000-0003": "Líder de Manutenção",
+    "11 00000-0004": "Líder de Produção 1",
+    "11 00000-0005": "Líder de Produção 2",
+    "11 00000-0010": "Mecânico 1",
+    "11 00000-0011": "Mecânico 2",
+    "11 00000-0020": "Eletricista 1",
+    "11 00000-0021": "Eletricista 2",
+}
 
-def load_state() -> Dict:
-    try:
-        with open(DATA_PATH, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
+def get_users():
+    return USERS
 
-def save_state(state: Dict):
-    with open(DATA_PATH, "w") as f:
-        json.dump(state, f, indent=4)
+def get_user_name(phone_number):
+    return USERS.get(phone_number, "Desconhecido")
 
-def get_users() -> list:
-    state = load_state()
-    return list(state.get("conversations", {}).keys())
+def get_current_user():
+    return st.session_state.get("current_user")
 
-def get_current_user() -> str:
-    state = load_state()
-    return state.get("current_user", "")
+def switch_user(new_user):
+    st.session_state["current_user"] = new_user
 
-def switch_user(user_id: str):
-    state = load_state()
-    state["current_user"] = user_id
-    save_state(state)
+def unread_counts():
+    return st.session_state.get("unread", {})
 
-def unread_counts() -> Dict[str, int]:
-    state = load_state()
-    counts = {}
-    for user, msgs in state.get("conversations", {}).items():
-        unread = [m for m in msgs if m.get("role") == "user" and not m.get("read", False)]
-        counts[user] = len(unread)
-    return counts
+def initialize_session_state():
+    if "current_user" not in st.session_state:
+        st.session_state["current_user"] = "11 00000-0004"  # Começa com Líder de Produção 1
+    if "messages" not in st.session_state:
+        st.session_state["messages"] = []
+    if "unread" not in st.session_state:
+        st.session_state["unread"] = {user: 0 for user in USERS}
