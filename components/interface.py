@@ -2,7 +2,7 @@
 
 import streamlit as st
 from utils.database import get_all_users, get_message_history
-from utils.session import get_current_user, set_selected_user
+from utils.session import get_current_user
 
 def render_interface():
     st.title("Agente de Manutenção")
@@ -16,7 +16,7 @@ def render_interface():
     for user in users:
         label = f'{user["nome"]} ({user["perfil"]})'
         if st.button(label, key=user["numero"]):
-            set_selected_user(user["numero"])
+            st.session_state["selected_user"] = user["numero"]
 
     selected_user = st.session_state.get("selected_user")
     if selected_user:
