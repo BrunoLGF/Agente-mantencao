@@ -1,41 +1,31 @@
 # components/interface.py
 
 import streamlit as st
-from logic.agent import process_message
-from utils.session import get_current_user, get_users, switch_user, unread_counts
+from utils.database import get_all_users, get_message_history
+from utils.session import get_current_user, set_selected_user
 
 def render_interface():
-    st.title("🛠️ Agente de Manutenção")
-    col1, col2 = st.columns([1, 3])
+    st.title("Agente de Manutenção")
+    current_user = get_current_user()
+    if not current_user:
+        st.warning("Nenhum usuário logado.")
+        return
 
-    with col1:
-        st.subheader("Usuários")
-        for user in get_users():
-            count = unread_counts().get(user, 0)
-            nome = get_users().get(user, {}).get("nome", user)
-label = f"{nome} ({count})" if count > 0 else nome
+    st.sidebar.header("Usuários")
+    users = get_all_users()
+    for user in users:
+        label = f'{user["nome"]} ({user["perfil"]})'
         if st.button(label, key=user["numero"]):
-                switch_user(user["numero"])
+            set_selected_user(user["numero"])
 
-    with col2:
-        current_user = get_current_user()
-        st.subheader(f"Conversa - {current_user['nome']}")
-        history = st.session_state["mensagens"][current_user["numero"]]
+    selected_user = st.session_state.get("selected_user")
+    if selected_user:
+        st.subheader(f"Conversas com {selected_user}")
+        messages = get_message_history(selected_user)
+        for msg in messages:
+            st.markdown(f"**{msg['autor']}**: {msg['mensagem']}")
 
-        for msg in history:
-            align = "🧑‍🔧" if msg["remetente"] == current_user["numero"] else "🤖"
-            st.markdown(f"**{align}** {msg['mensagem']}")
-
-        nova_msg = st.text_input("Digite sua mensagem:", key="input_msg")
+        nova_msg = st.text_input("Enviar mensagem", key="msg_input")
         if st.button("Enviar"):
-            if nova_msg.strip():
-                history.append({
-                    "remetente": current_user["numero"],
-                    "mensagem": nova_msg.strip()
-                })
-                resposta = process_message(current_user["numero"], nova_msg.strip())
-                history.append({
-                    "remetente": "agente",
-                    "mensagem": resposta
-                })
-                st.experimental_rerun()
+            if nova_msg:
+                st.session_state["nova_mensagem"] = nova_msg
