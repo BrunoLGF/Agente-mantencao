@@ -30,6 +30,19 @@ message_log = []
 order_counter = 1
 open_orders = []
 
+def get_all_users():
+    return [
+        {"nome": nome, "perfil": roles[numero], "numero": numero}
+        for nome, numero in users.items()
+    ]
+
+def get_message_history(user_number):
+    return [
+        {"autor": "Usuário" if msg["from"] == user_number else "Agente", "mensagem": msg["message"]}
+        for msg in message_log
+        if msg["from"] == user_number or msg["from"] == "agent"
+    ]
+
 def get_users():
     return users
 
