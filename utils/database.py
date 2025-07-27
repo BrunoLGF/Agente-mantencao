@@ -20,6 +20,13 @@ def get_message_history(user_number):
         if msg["from"] == user_number or msg["from"] == "agent"
     ]
 
+def add_message_to_log(from_number, to_number, message):
+    MESSAGES.append({
+        "from": from_number,
+        "to": to_number,
+        "message": message
+    })
+
 def get_role(number):
     roles = {
         "11000000001": "Diretor",
