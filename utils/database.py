@@ -1,4 +1,4 @@
-from mock_db import users as USERS, message_log as MESSAGES
+from utils.mock_db import users as USERS, message_log as MESSAGES
 
 def get_all_users():
     return [
