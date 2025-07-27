@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.database import (
     get_all_users,
-    get_user_role,
+    get_role as get_user_role,
     get_message_history,
     add_message_to_log,
 )
