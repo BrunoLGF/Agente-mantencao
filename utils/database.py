@@ -1,42 +1,40 @@
-from utils.mock_db import users as USERS, message_log as MESSAGES
+def get_user_role(number):
+    roles = {
+        "11000000001": "diretor",
+        "11000000002": "gerente_producao",
+        "11000000003": "lider_manutencao",
+        "11000000004": "lider_producao",
+        "11000000005": "lider_producao",
+        "11000000010": "mecanico",
+        "11000000011": "mecanico",
+        "11000000020": "eletricista",
+        "11000000021": "eletricista",
+    }
+    return roles.get(str(number), "desconhecido")
+
+def get_user_by_number(number):
+    users = {
+        "11000000001": {"name": "Diretor", "number": "11000000001"},
+        "11000000002": {"name": "Gerente de Produção", "number": "11000000002"},
+        "11000000003": {"name": "Líder de Manutenção", "number": "11000000003"},
+        "11000000004": {"name": "Líder Produção 1", "number": "11000000004"},
+        "11000000005": {"name": "Líder Produção 2", "number": "11000000005"},
+        "11000000010": {"name": "Mecânico 1", "number": "11000000010"},
+        "11000000011": {"name": "Mecânico 2", "number": "11000000011"},
+        "11000000020": {"name": "Eletricista 1", "number": "11000000020"},
+        "11000000021": {"name": "Eletricista 2", "number": "11000000021"},
+    }
+    return users.get(str(number), {"name": "Desconhecido", "number": str(number)})
 
 def get_all_users():
     return [
-        {
-            "nome": nome,
-            "numero": numero,
-            "perfil": get_role(numero)
-        }
-        for nome, numero in USERS.items()
+        {"name": "Diretor", "number": "11000000001"},
+        {"name": "Gerente de Produção", "number": "11000000002"},
+        {"name": "Líder de Manutenção", "number": "11000000003"},
+        {"name": "Líder Produção 1", "number": "11000000004"},
+        {"name": "Líder Produção 2", "number": "11000000005"},
+        {"name": "Mecânico 1", "number": "11000000010"},
+        {"name": "Mecânico 2", "number": "11000000011"},
+        {"name": "Eletricista 1", "number": "11000000020"},
+        {"name": "Eletricista 2", "number": "11000000021"},
     ]
-
-def get_message_history(user_number):
-    return [
-        {
-            "autor": "Usuário" if msg["from"] == user_number else "Agente",
-            "mensagem": msg["message"]
-        }
-        for msg in MESSAGES
-        if msg["from"] == user_number or msg["from"] == "agent"
-    ]
-
-def add_message_to_log(from_number, to_number, message):
-    MESSAGES.append({
-        "from": from_number,
-        "to": to_number,
-        "message": message
-    })
-
-def get_role(number):
-    roles = {
-        "11000000001": "Diretor",
-        "11000000002": "Gerente de Produção",
-        "11000000003": "Líder de Manutenção",
-        "11000000004": "Líder de Produção",
-        "11000000005": "Líder de Produção",
-        "11000000010": "Mecânico",
-        "11000000011": "Mecânico",
-        "11000000020": "Eletricista",
-        "11000000021": "Eletricista",
-    }
-    return roles.get(number, "Desconhecido")
