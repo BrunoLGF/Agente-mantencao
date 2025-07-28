@@ -1,16 +1,11 @@
-# app.py
-
 import streamlit as st
-from components.interface import render_interface
-from utils.session import initialize_session_state
-st.set_page_config(
-    page_title="Agente de Manutenção",
-    page_icon="🛠️",
-    layout="wide"
-)
+from components.interface import show_interface
 
-# Inicializa estados da sessão
-initialize_session_state()
+st.set_page_config(page_title="Agente de Manutenção", layout="wide")
 
-# Renderiza a interface principal
-render_interface()
+def main():
+    st.title("🛠️ Agente Virtual de Manutenção")
+    show_interface()
+
+if __name__ == "__main__":
+    main()
