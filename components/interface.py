@@ -1,63 +1,38 @@
-# components/interface.py
-
 import streamlit as st
-from utils.database import get_all_users, get_message_history
+from utils.database import get_user_role, get_all_users, get_user_by_number
+from core.agent import process_message
+from utils.session import initialize_session_state
 
-def render_interface():
+def show_interface():
+    initialize_session_state()
+
+    st.sidebar.title("Usuários")
+    selected_user = st.sidebar.selectbox("Escolha o usuário para conversar", get_all_users(), format_func=lambda u: u["name"])
+    selected_number = selected_user["number"]
+    st.session_state.current_user_number = selected_number
+
+    unread_count = st.session_state.unread_counts.get(selected_number, 0)
+    if unread_count > 0:
+        st.sidebar.markdown(f"🔴 Mensagens não lidas: {unread_count}")
+
     st.title("Agente de Manutenção")
+    st.subheader(f"Conversas com {selected_number}")
 
-    users = get_all_users()
-
-    # Inicializa o log se ainda não existir
     if "message_log" not in st.session_state:
         st.session_state.message_log = []
 
-    # Coluna lateral fixa para seleção de usuários
-    with st.sidebar:
-        st.header("Usuários")
-        selected_number = st.radio(
-            "Escolha o usuário para conversar",
-            options=[user["numero"] for user in users],
-            format_func=lambda numero: next((user["nome"] for user in users if user["numero"] == numero), str(numero))
-        )
+    for msg in st.session_state.message_log:
+        if msg["from"] == selected_number:
+            st.markdown(f"👷‍♂️ **{get_user_by_number(msg['from'])['name']}**: {msg['message']}")
+        else:
+            st.markdown(f"🤖 **Agente**: {msg['message']}")
 
-    # Histórico de mensagens
-    st.subheader(f"Conversas com {selected_number}")
-    messages = get_message_history(selected_number)
-    for msg in messages:
-        st.markdown(f"**{msg['autor']}**: {msg['mensagem']}")
+    message = st.text_input("Enviar mensagem")
+    if st.button("Enviar") and message.strip():
+        st.session_state.message_log.append({"from": selected_number, "message": message})
+        response = process_message(message, selected_number)
+        st.session_state.message_log.append({"from": "agent", "message": response})
 
-    # Formulário para envio
-    with st.form(key="message_form"):
-        message = st.text_input("Enviar mensagem", placeholder="Digite sua mensagem")
-        submitted = st.form_submit_button("Enviar")
-
-        if submitted and message:
-            # Adiciona a mensagem do usuário
-            st.session_state.message_log.append({
-                "from": selected_number,
-                "message": message
-            })
-
-            # Gera resposta automática do agente
-            resposta = gerar_resposta_agente(message)
-
-            st.session_state.message_log.append({
-                "from": "agente",
-                "message": resposta
-            })
-
-            st.rerun()
-
-def gerar_resposta_agente(mensagem):
-    """
-    Simples lógica de resposta automática do agente.
-    (Você pode substituir isso por algo mais inteligente no futuro)
-    """
-    mensagem = mensagem.lower()
-    if "parou" in mensagem or "erro" in mensagem:
-        return "Recebido! Vamos encaminhar um técnico para verificar o problema."
-    elif "ok" in mensagem or "obrigado" in mensagem:
-        return "De nada! Qualquer coisa, estou à disposição."
-    else:
-        return "Entendido. A equipe de manutenção foi notificada."
+        # Reduz contador de não lidas
+        if selected_number in st.session_state.unread_counts:
+            st.session_state.unread_counts[selected_number] = 0
