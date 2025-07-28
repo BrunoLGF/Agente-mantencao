@@ -1,21 +1,13 @@
 import streamlit as st
-from core.agent import estado
+from utils.session import get_debug_log
 
-st.set_page_config(page_title="Modo Debug", layout="wide")
-
-st.title("🛠️ Modo Debug da Agente")
-
-st.header("📦 Variáveis Internas")
-st.json(estado)
-
-st.markdown("---")
-
-st.header("🗃️ Histórico de Mensagens por Usuário")
-
-for numero, mensagens in estado["history"].items():
-    st.subheader(f"Usuário: {numero}")
-    for msg in mensagens:
-        remetente = msg.get("remetente", "desconhecido")
-        conteudo = msg.get("mensagem", "")
-        timestamp = msg.get("timestamp", "sem horário")
-        st.markdown(f"- **{remetente}** ({timestamp}): {conteudo}")
+def show_debug_page():
+    st.title("Modo Debug")
+    log = get_debug_log()
+    
+    if not log:
+        st.info("Nenhuma atividade registrada ainda.")
+        return
+    
+    for entry in log:
+        st.markdown(f"**{entry['timestamp']}** - **{entry['actor']}**: {entry['content']}")
