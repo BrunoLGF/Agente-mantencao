@@ -1,68 +1,103 @@
-import json
-import os
+from utils.database import get_user_role, get_user_by_number
 from datetime import datetime
-from uuid import uuid4
 
-STATE_FILE = "data/state.json"
+def process_message(message_log, sender, message, session_state):
+    role = get_user_role(sender)
+    response = ""
+    timestamp = datetime.now().strftime("%H:%M")
 
-def carregar_estado():
-    if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    return {
-        "os_counter": 1,
-        "open_os": {},
-        "history": {},
-        "active_user": None,
-        "notifications": {}
-    }
+    # Inicializa o estado global da OS se não existir
+    if "ordens_servico" not in session_state:
+        session_state["ordens_servico"] = {}
+        session_state["contador_os"] = 1
 
-def salvar_estado(estado):
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
-        json.dump(estado, f, indent=4, ensure_ascii=False)
+    ordens_servico = session_state["ordens_servico"]
+    contador_os = session_state["contador_os"]
 
-estado = carregar_estado()
-
-def adicionar_mensagem(numero, mensagem, remetente):
-    if numero not in estado["history"]:
-        estado["history"][numero] = []
-
-    estado["history"][numero].append({
-        "remetente": remetente,
-        "mensagem": mensagem,
-        "timestamp": datetime.now().strftime("%H:%M:%S")
-    })
-
-    salvar_estado(estado)
-
-def processar_mensagem(numero, mensagem):
-    adicionar_mensagem(numero, mensagem, "usuário")
-
-    resposta = ""
-    notificacoes = []
-
-    if "máquina" in mensagem.lower() or "parada" in mensagem.lower():
-        resposta = "Entendi! Deseja abrir uma Ordem de Serviço para essa ocorrência?"
-    elif mensagem.strip().lower() in ["sim", "sim.", "quero", "quero sim"]:
-        os_id = f"OS-{str(uuid4())[:8].upper()}"
-        estado["open_os"][os_id] = {
-            "usuario": numero,
+    def nova_os(equipamento, problema, solicitante):
+        os_id = f"OS{contador_os:03d}"
+        session_state["contador_os"] += 1
+        ordens_servico[os_id] = {
+            "equipamento": equipamento,
+            "problema": problema,
+            "solicitante": solicitante,
             "status": "aberta",
-            "hora_abertura": datetime.now().strftime("%H:%M:%S")
+            "abertura": timestamp,
+            "responsavel": None,
+            "finalizacao": None,
+            "pecas_trocadas": [],
+            "descricao_servico": "",
+            "validada": False
         }
-        salvar_estado(estado)
-        resposta = f"Ordem de Serviço {os_id} registrada com sucesso. Enviando notificação para a equipe de manutenção."
-        notificacoes.append({
-            "para": "equipe",
-            "mensagem": f"🚨 Nova OS criada por {numero}: {os_id}"
-        })
-    elif "andamento" in mensagem.lower():
-        resposta = "Consultando o andamento... (em breve resposta detalhada)"
-    elif "relatório" in mensagem.lower():
-        resposta = "Gerando relatório de Ordens de Serviço do dia... (em breve funcionalidade ativa)"
+        return os_id
+
+    def notificar(lider_manutencao=True, gerente_producao=True):
+        notificacoes = []
+        for os_id, os in ordens_servico.items():
+            if os["status"] == "aberta" and os["responsavel"]:
+                notificacoes.append(f"🔔 Notificação de Abertura de OS\n"
+                                    f"OS: {os_id}\n"
+                                    f"Horário: {os['abertura']}\n"
+                                    f"Solicitante: {get_user_by_number(os['solicitante'])['name']}\n"
+                                    f"Equipamento: {os['equipamento']}\n"
+                                    f"Problema: {os['problema']}\n"
+                                    f"Técnico Responsável: {get_user_by_number(os['responsavel'])['name']}")
+        return notificacoes
+
+    if role == "lider_producao":
+        if "parada" in message.lower():
+            response = "Qual o problema identificado?"
+        elif "vazamento" in message.lower():
+            response = "Deseja abrir uma OS e solicitar um mecânico?"
+        elif "sim" in message.lower():
+            os_id = nova_os("Prensa Hidráulica", "Vazamento de óleo", sender)
+            session_state["ultima_os"] = os_id
+            response = f"✅ Ordem de serviço {os_id} aberta para Prensa Hidráulica com vazamento de óleo."
+        elif "está funcionando normalmente" in message.lower() or "sim" in message.lower():
+            os_id = session_state.get("ultima_os")
+            if os_id and os_id in ordens_servico:
+                ordens_servico[os_id]["validada"] = True
+                ordens_servico[os_id]["status"] = "finalizada"
+                ordens_servico[os_id]["finalizacao"] = timestamp
+                response = f"✅ OS {os_id} confirmada como finalizada. Obrigado!"
+        else:
+            response = "Entendi. Pode me dar mais detalhes sobre o problema?"
+
+    elif role == "mecanico":
+        if "aceito" in message.lower() or "sim" in message.lower():
+            os_id = session_state.get("ultima_os")
+            if os_id:
+                ordens_servico[os_id]["responsavel"] = sender
+                response = f"✅ Obrigado, {get_user_by_number(sender)['name']}! Bom trabalho!"
+        elif "concluído" in message.lower():
+            os_id = session_state.get("ultima_os")
+            if os_id:
+                response = "O equipamento está funcionando normalmente?"
+        elif "funcionando" in message.lower():
+            response = "Foi realizada a troca de alguma peça?"
+        elif "sim" in message.lower():
+            response = "Liste as peças que foram substituídas."
+        elif "mangueira" in message.lower():
+            os_id = session_state.get("ultima_os")
+            if os_id:
+                ordens_servico[os_id]["pecas_trocadas"].append("Mangueira hidráulica YY")
+                response = "Qual o serviço realizado?"
+        elif "troca da mangueira" in message.lower():
+            os_id = session_state.get("ultima_os")
+            if os_id:
+                ordens_servico[os_id]["descricao_servico"] = "Troca da mangueira hidráulica"
+                response = "Posso confirmar o fechamento da OS ou deseja revisar?"
+        elif "finalizar" in message.lower():
+            os_id = session_state.get("ultima_os")
+            if os_id:
+                ordens_servico[os_id]["status"] = "finalizada"
+                ordens_servico[os_id]["finalizacao"] = timestamp
+                response = f"✅ OS {os_id} encerrada com sucesso."
+
+    elif role in ["lider_manutencao", "gerente_producao"]:
+        response = "\n\n".join(notificar())
+
     else:
-        resposta = "Desculpe, ainda estou aprendendo. Você poderia reformular ou ser mais específico?"
+        response = "Olá! Como posso ajudar no suporte à manutenção?"
 
-    adicionar_mensagem(numero, resposta, "agente")
-
-    return resposta, notificacoes
+    return response
