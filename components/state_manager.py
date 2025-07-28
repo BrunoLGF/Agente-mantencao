@@ -1,10 +1,10 @@
-from utils.database import get_user_role, get_user_name
+from utils import mock_db
 import streamlit as st
 from datetime import datetime
 
 def process_message(user_number, message):
-    role = get_user_role(user_number)
-    nome = get_user_name(user_number)
+    role = mock_db.get_user_role(user_number)
+    nome = mock_db.get_users()[user_number]["name"]
 
     if "message_log" not in st.session_state:
         st.session_state.message_log = []
@@ -30,14 +30,14 @@ def process_message(user_number, message):
                 "hora_abertura": agora,
                 "responsável": None,
                 "problema": "",
-                "pecas": [],
-                "servico": "",
+                "peças": [],
+                "serviço": "",
                 "hora_fechamento": ""
             }
             resposta = f"{nome}, deseja abrir uma ordem de serviço para: '{message}'?"
         elif "sim" in message.lower() and st.session_state.ultima_os:
             os = st.session_state.ordens_servico[st.session_state.ultima_os]
-            os["problema"] = "pendente"
+            os["status"] = "pendente"
             resposta = f"Ordem de serviço {st.session_state.ultima_os} aberta para {os['equipamento']}. Aguardando técnico."
         else:
             resposta = f"{nome}, por favor detalhe se deseja abrir uma ordem de serviço ou informe o problema."
@@ -64,5 +64,10 @@ def process_message(user_number, message):
     else:
         resposta = f"Olá {nome}, sua função ainda não está com interações definidas."
 
-    st.session_state.message_log.append({"from": user_number, "message": message, "response": resposta})
+    st.session_state.message_log.append({
+        "from": user_number,
+        "message": message,
+        "response": resposta
+    })
+
     return resposta
