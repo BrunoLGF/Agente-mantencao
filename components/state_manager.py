@@ -1,41 +1,68 @@
-# components/state_manager.py
-
-import json
+from utils.database import get_user_role, get_user_name
+import streamlit as st
 from datetime import datetime
 
-def get_current_timestamp():
-    return datetime.now().strftime("%H:%M")
+def process_message(user_number, message):
+    role = get_user_role(user_number)
+    nome = get_user_name(user_number)
 
-def load_state():
-    try:
-        with open("data/state.json", "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {
-            "os_counter": 1,
-            "open_os": {},
-            "history": {},
-            "active_user": None,
-            "notifications": {}
-        }
+    if "message_log" not in st.session_state:
+        st.session_state.message_log = []
 
-def save_state(state):
-    with open("data/state.json", "w") as f:
-        json.dump(state, f, indent=4)
+    if "ordens_servico" not in st.session_state:
+        st.session_state.ordens_servico = {}
 
-def append_history(state, phone_number, sender, message):
-    if phone_number not in state["history"]:
-        state["history"][phone_number] = []
-    state["history"][phone_number].append({
-        "timestamp": get_current_timestamp(),
-        "sender": sender,
-        "message": message
-    })
+    if "contador_os" not in st.session_state:
+        st.session_state.contador_os = 1
 
-def notify_user(state, phone_number):
-    if phone_number not in state["notifications"]:
-        state["notifications"][phone_number] = 0
-    state["notifications"][phone_number] += 1
+    resposta = ""
+    agora = datetime.now().strftime("%H:%M:%S")
 
-def clear_notifications(state, phone_number):
-    state["notifications"][phone_number] = 0
+    if role == "Líder de Produção":
+        if "parada" in message.lower():
+            numero_os = f"OS-{st.session_state.contador_os:03d}"
+            st.session_state.contador_os += 1
+            st.session_state.ultima_os = numero_os
+            st.session_state.ordens_servico[numero_os] = {
+                "status": "aberta",
+                "solicitante": nome,
+                "equipamento": message,
+                "hora_abertura": agora,
+                "responsável": None,
+                "problema": "",
+                "pecas": [],
+                "servico": "",
+                "hora_fechamento": ""
+            }
+            resposta = f"{nome}, deseja abrir uma ordem de serviço para: '{message}'?"
+        elif "sim" in message.lower() and st.session_state.ultima_os:
+            os = st.session_state.ordens_servico[st.session_state.ultima_os]
+            os["problema"] = "pendente"
+            resposta = f"Ordem de serviço {st.session_state.ultima_os} aberta para {os['equipamento']}. Aguardando técnico."
+        else:
+            resposta = f"{nome}, por favor detalhe se deseja abrir uma ordem de serviço ou informe o problema."
+
+    elif role == "Mecânico":
+        if "aceito" in message.lower() and st.session_state.ultima_os:
+            os = st.session_state.ordens_servico[st.session_state.ultima_os]
+            os["responsável"] = nome
+            resposta = f"{nome}, confirmado! Você assumiu a {st.session_state.ultima_os}."
+        elif "concluído" in message.lower():
+            resposta = f"{nome}, o serviço foi concluído com sucesso? O equipamento voltou a funcionar normalmente?"
+        elif "sim" in message.lower():
+            resposta = f"{nome}, houve troca de peças?"
+        elif "não" in message.lower():
+            resposta = f"{nome}, deseja encerrar a {st.session_state.ultima_os}?"
+        elif "encerrar" in message.lower():
+            os = st.session_state.ordens_servico[st.session_state.ultima_os]
+            os["hora_fechamento"] = agora
+            os["status"] = "fechada"
+            resposta = f"Ordem {st.session_state.ultima_os} encerrada. Obrigado, {nome}."
+        else:
+            resposta = f"{nome}, poderia informar o status da OS ou peça trocada?"
+
+    else:
+        resposta = f"Olá {nome}, sua função ainda não está com interações definidas."
+
+    st.session_state.message_log.append({"from": user_number, "message": message, "response": resposta})
+    return resposta
