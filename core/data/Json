@@ -1,0 +1,23 @@
+{
+  "open_os": [],
+  "closed_os": [],
+  "equipment": {
+    "EQ001": {
+      "nome": "Prensa Hidráulica",
+      "descricao": "Prensa para conformação de peças",
+      "setor": "Estamparia"
+    },
+    "EQ002": {
+      "nome": "Compressor de Ar",
+      "descricao": "Compressor de ar principal",
+      "setor": "Utilidades"
+    },
+    "EQ003": {
+      "nome": "Esteira Transportadora",
+      "descricao": "Esteira da linha de montagem",
+      "setor": "Montagem"
+    }
+  },
+  "os_counter": 0,
+  "message_log": []
+}
