@@ -1,6 +1,6 @@
 from datetime import datetime
 import time
-from database import mock_db
+from core.mock_db import mock_db
 
 def timestamp():
     return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
