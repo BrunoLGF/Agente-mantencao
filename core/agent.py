@@ -80,7 +80,7 @@ Técnico Responsável: {mock_db.get_users().get(os['responsavel'], {}).get('name
     return response
     
     def process_user_message(sender, message, session_state):
-        if "log" not in session_state:
+    if "log" not in session_state:
         session_state["log"] = []
 
     message_log = session_state["log"]
