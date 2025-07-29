@@ -1,54 +1,43 @@
 import streamlit as st
-from utils import mock_db
-from core.agent import process_message
-from utils.session import initialize_session_state
+from core.agent import process_user_message
+from utils.session import init_session_state
+import utils.mock_db as mock_db  # Importa a base simulada
 
 def show_interface():
-    initialize_session_state()
+    st.set_page_config(page_title="Agente de Manutenção", layout="wide")
 
-    st.sidebar.title("Usuários")
+    # Inicializa estado da sessão
+    init_session_state()
+
+    # Define lista de usuários com base nos nomes
+    users_dict = mock_db.get_users()
     selected_user = st.sidebar.selectbox(
         "Escolha o usuário para conversar:",
-        list(mock_db.get_users().keys()),
-        format_func=lambda x: mock_db.get_users()[x]["name"]
+        list(users_dict.keys())
     )
-    st.session_state.current_user_number = selected_user
 
-    unread_count = st.session_state.unread_counts.get(selected_user, 0)
-    if unread_count > 0:
-        st.sidebar.markdown(f"🔴 Mensagens não lidas: **{unread_count}**")
+    user_number = users_dict[selected_user]
+    user_role = mock_db.get_user_role(user_number)
+    st.session_state.user_number = user_number
+    st.session_state.user_role = user_role
 
-    st.title("🛠️ Agente de Manutenção")
-    st.subheader(f"💬 Conversas com {mock_db.get_users()[selected_user]['name']}")
+    st.sidebar.markdown(f"**Função:** {user_role}")
+    st.sidebar.markdown(f"**Número:** {user_number}")
 
-    if "message_log" not in st.session_state:
-        st.session_state.message_log = []
+    st.title("Agente Virtual de Manutenção")
 
-    for msg in st.session_state.message_log:
-        if msg["from"] == selected_user:
-            st.markdown(f"👷 **{mock_db.get_users()[msg['from']]['name']}**: {msg['message']}")
-        elif msg["from"] == "agent":
-            st.markdown(f"🤖 **Agente**: {msg['message']}")
+    st.markdown(f"**Usuário atual:** {selected_user} ({user_role})")
 
-    message = st.text_input("Digite sua mensagem:")
-    if st.button("Enviar") and message.strip():
-        st.session_state.message_log.append({
-            "from": selected_user,
-            "message": message
-        })
+    # Histórico de mensagens
+    messages = mock_db.get_message_history(user_number)
+    for msg in messages:
+        with st.chat_message(msg["autor"]):
+            st.markdown(msg["mensagem"])
 
-        response = process_message(
-            st.session_state.message_log,
-            selected_user,
-            message,
-            st.session_state
-        )
-
-        st.session_state.message_log.append({
-            "from": "agent",
-            "message": response
-        })
-
-        # Zera contador de não lidas
-        if selected_user in st.session_state.unread_counts:
-            st.session_state.unread_counts[selected_user] = 0
+    # Campo de entrada de mensagem
+    if prompt := st.chat_input("Digite sua mensagem para a agente:"):
+        with st.chat_message("Usuário"):
+            st.markdown(prompt)
+        response = process_user_message(user_number, prompt)
+        with st.chat_message("Agente"):
+            st.markdown(response)
